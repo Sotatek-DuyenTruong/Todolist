@@ -77,22 +77,12 @@ router.put("/:id", async (req, res, next) => {
       });
       return;
     }
-    const rawCompleted = req.body ? req.body.completed : undefined;
-    let completed: boolean | null = null;
-    if (typeof rawCompleted === "boolean") {
-      completed = rawCompleted;
-    } else if (rawCompleted === "true" || rawCompleted === "false") {
-      completed = rawCompleted === "true";
-    }
-    if (completed === null) {
-      res.status(400).json({
-        message: "Completed must be a boolean",
-      });
-      return;
-    }
+    const title = req.body && typeof req.body.title === "string" ? req.body.title.trim() : "";
+    const completed = req.body && typeof req.body.completed === "boolean" ? req.body.completed : null;
+
     const result = await pool.query(
-      "UPDATE todos SET completed = $1 WHERE id = $2 RETURNING *",
-      [completed, id]
+      "UPDATE todos SET completed = $1, title = $2 WHERE id = $3 RETURNING *",
+      [completed, title, id]
     );
     if (result.rows.length === 0) {
       res.status(404).json({
@@ -105,5 +95,22 @@ router.put("/:id", async (req, res, next) => {
     next(error);
   }
 });
+
+// Delete /api/todos/:id
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const result = await pool.query("DELETE FROM todos WHERE id = $1 RETURNING *", [id]);
+    if (result.rows.length === 0) {
+      res.status(404).json({
+        message: "Todo not found",
+      });
+      return;
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error)
+  }
+})
 
 export = router
