@@ -8,3 +8,7 @@ export const pool = new Pool({
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 })
+
+pool.on('error', (err) => {
+  console.error('Unexpected PostgreSQL pool error:', err.message)
+})
