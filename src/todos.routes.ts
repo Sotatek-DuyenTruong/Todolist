@@ -56,10 +56,14 @@ router.post("/", async (req, res, next) => {
       return;
     }
 
+    console.log("POST /api/todos body:", req.body)
+
     const result = await pool.query(
       "INSERT INTO todos (title) VALUES ($1) RETURNING *",
       [title]
     );
+
+    console.log("Inserted todo:", result.rows[0])
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
