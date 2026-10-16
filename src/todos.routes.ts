@@ -56,14 +56,10 @@ router.post("/", async (req, res, next) => {
       return;
     }
 
-    console.log("POST /api/todos body:", req.body)
-
     const result = await pool.query(
       "INSERT INTO todos (title) VALUES ($1) RETURNING *",
       [title]
     );
-
-    console.log("Inserted todo:", result.rows[0])
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -85,9 +81,12 @@ router.put("/:id", async (req, res, next) => {
     const completed = req.body && typeof req.body.completed === "boolean" ? req.body.completed : null;
 
     const result = await pool.query(
-      "UPDATE todos SET completed = $1, title = $2 WHERE id = $3 RETURNING *",
-      [completed, title, id]
-    );
+      `UPDATE todos
+       SET title = $1, completed = $2
+       WHERE id = $3
+       RETURNING *`,
+      [title.trim(), completed, id],
+    )
     if (result.rows.length === 0) {
       res.status(404).json({
         message: "Todo not found",
