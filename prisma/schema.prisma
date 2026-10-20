@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  MEMBER
+  PT
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum TrainingType {
+  ONE_ON_ONE
+  TWO_ON_ONE
+}
+
+enum SessionStatus {
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String       @id @default(uuid()) @db.Uuid
+  fullName     String       @map("full_name")
+  email        String?      @unique
+  phone        String?
+  passwordHash String?      @map("password_hash")
+  role         Role
+  status       RecordStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  gymContracts     GymContract[]      @relation("GymMember")
+  ptContracts      PtContract[]       @relation("AssignedPT")
+  ptMemberships    PtContractMember[]
+  checkIns         CheckIn[]          @relation("MemberCheckIns")
+  createdCheckIns  CheckIn[]          @relation("CheckInCreator")
+  recordedSessions PtSessionRecord[]  @relation("SessionRecorder")
+
+  @@map("users")
+}
+
+model GymMembershipPackage {
+  id                 String        @id @default(uuid()) @db.Uuid
+  name               String
+  durationMonths     Int           @map("duration_months")
+  price              Decimal       @db.Decimal(12, 2)
+  includedActivities String[]      @default([]) @map("included_activities")
+  status             RecordStatus  @default(ACTIVE)
+  contracts          GymContract[]
+
+  @@map("gym_membership_packages")
+}
+
+model GymContract {
+  id             String               @id @default(uuid()) @db.Uuid
+  memberId       String               @map("member_id") @db.Uuid
+  packageId      String               @map("package_id") @db.Uuid
+  contractNumber String               @unique @map("contract_number")
+  startDate      DateTime             @map("start_date") @db.Date
+  endDate        DateTime             @map("end_date") @db.Date
+  contractPrice  Decimal              @map("contract_price") @db.Decimal(12, 2)
+  status         ContractStatus       @default(ACTIVE)
+  member         User                 @relation("GymMember", fields: [memberId], references: [id])
+  package        GymMembershipPackage @relation(fields: [packageId], references: [id])
+
+  @@map("gym_contracts")
+}
+
+model PtPackage {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String
+  totalSessions Int          @map("total_sessions")
+  trainingType  TrainingType @map("training_type")
+  validityDays  Int          @map("validity_days")
+  price         Decimal      @db.Decimal(12, 2)
+  status        RecordStatus @default(ACTIVE)
+  contracts     PtContract[]
+
+  @@map("pt_packages")
+}
+
+model PtContract {
+  id                String         @id @default(uuid()) @db.Uuid
+  packageId         String         @map("package_id") @db.Uuid
+  ptId              String         @map("pt_id") @db.Uuid
+  contractNumber    String         @unique @map("contract_number")
+  startDate         DateTime       @map("start_date") @db.Date
+  endDate           DateTime       @map("end_date") @db.Date
+  totalSessions     Int            @map("total_sessions")
+  remainingSessions Int            @map("remaining_sessions")
+  status            ContractStatus @default(ACTIVE)
+
+  package        PtPackage          @relation(fields: [packageId], references: [id])
+  pt             User               @relation("AssignedPT", fields: [ptId], references: [id])
+  members        PtContractMember[]
+  sessionRecords PtSessionRecord[]
+
+  @@map("pt_contracts")
+}
+
+model PtContractMember {
+  id           String     @id @default(uuid()) @db.Uuid
+  ptContractId String     @map("pt_contract_id") @db.Uuid
+  memberId     String     @map("member_id") @db.Uuid
+  contract     PtContract @relation(fields: [ptContractId], references: [id])
+  member       User       @relation(fields: [memberId], references: [id])
+
+  @@unique([ptContractId, memberId])
+  @@map("pt_contract_members")
+}
+
+model PtSessionRecord {
+  id           String        @id @default(uuid()) @db.Uuid
+  ptContractId String        @map("pt_contract_id") @db.Uuid
+  completedAt  DateTime      @default(now()) @map("completed_at")
+  status       SessionStatus @default(COMPLETED)
+  recordedBy   String        @map("recorded_by") @db.Uuid
+
+  contract PtContract @relation(fields: [ptContractId], references: [id])
+  recorder User       @relation("SessionRecorder", fields: [recordedBy], references: [id])
+
+  @@map("pt_session_records")
+}
+
+model CheckIn {
+  id          String   @id @default(uuid()) @db.Uuid
+  memberId    String   @map("member_id") @db.Uuid
+  checkedInAt DateTime @default(now()) @map("checked_in_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  member  User @relation("MemberCheckIns", fields: [memberId], references: [id])
+  creator User @relation("CheckInCreator", fields: [createdBy], references: [id])
+
+  @@map("check_ins")
+}
