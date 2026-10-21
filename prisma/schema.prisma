@@ -49,7 +49,7 @@ model User {
   gymContracts     GymContract[]      @relation("GymMember")
   ptContracts      PtContract[]       @relation("AssignedPT")
   ptMemberships    PtContractMember[]
-  checkIns         CheckIn[]          @relation("MemberCheckIns")
+  checkIns         CheckIn[]          @relation("CheckInUser")
   createdCheckIns  CheckIn[]          @relation("CheckInCreator")
   recordedSessions PtSessionRecord[]  @relation("SessionRecorder")
 
@@ -141,12 +141,15 @@ model PtSessionRecord {
 
 model CheckIn {
   id          String   @id @default(uuid()) @db.Uuid
-  memberId    String   @map("member_id") @db.Uuid
+  userId   String   @map("member_id") @db.Uuid
   checkedInAt DateTime @default(now()) @map("checked_in_at")
+  checkInDate DateTime @db.Date
   createdBy   String   @map("created_by") @db.Uuid
 
-  member  User @relation("MemberCheckIns", fields: [memberId], references: [id])
-  creator User @relation("CheckInCreator", fields: [createdBy], references: [id])
+  user User @relation("CheckInUser", fields: [userId], references: [id], onDelete: Restrict)
+  creator User @relation("CheckInCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
+  @@unique([userId, checkInDate])
+  @@index([checkedInAt])
   @@map("check_ins")
 }
